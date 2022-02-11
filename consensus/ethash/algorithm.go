@@ -247,19 +247,29 @@ func generateDatasetItem(cache []uint32, index uint32, keccak512 hasher) []byte 
 	keccak512(mix, mix)
 
 	// Convert the mix to uint32s to avoid constant bit shifting
+	// ugh, this is free in c++
 	intMix := make([]uint32, hashWords)
 	for i := 0; i < len(intMix); i++ {
 		intMix[i] = binary.LittleEndian.Uint32(mix[i*4:])
 	}
 	// fnv it with a lot of random cache nodes based on index
+	// datasetParents = 256
 	for i := uint32(0); i < datasetParents; i++ {
-		parent := fnv(index^i, intMix[i%16]) % rows
-		fnvHash(intMix, cache[parent*hashWords:])
+		parent := int((fnv(index^i, intMix[i%16]) % rows) * hashWords)
+		//fnvHash(intMix, cache[parent*hashWords:])
+
+		// len(intMix) = hashWords = 16
+		for j := 0; j < hashWords; j++ {
+			// this is called 4096 times
+			intMix[j] = intMix[j]*0x01000193 ^ cache[parent+j]
+		}
 	}
 	// Flatten the uint32 mix into a binary one and return
 	for i, val := range intMix {
 		binary.LittleEndian.PutUint32(mix[i*4:], val)
 	}
+	// end should be in c++
+
 	keccak512(mix, mix)
 	return mix
 }
