@@ -7,7 +7,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/eth/protocols/eth"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/p2p/enode"
@@ -25,7 +27,9 @@ func main() {
 	fmt.Println("hello geth")
 
 	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.TerminalFormat(true)))
-	glogger.Verbosity(log.LvlTrace)
+	//glogger.Verbosity(log.LvlInfo)
+	glogger.Verbosity(log.LvlDebug)
+	//glogger.Verbosity(log.LvlTrace)
 	log.Root().SetHandler(glogger)
 
 	// build up connections to peers
@@ -35,8 +39,30 @@ func main() {
 		NAT:        nat.Any(),
 	}
 	urls := params.MainnetBootnodes
+	//fmt.Println(urls)
 	config.BootstrapNodes = make([]*enode.Node, 0, len(urls))
+	config.Name = common.MakeName("Geth", "v1.10.15")
+
+	/*protos := eth.MakeProtocols(nil, 0, nil)
+	fmt.Println(protos)*/
+	protocols := make([]p2p.Protocol, 1)
+	protocols[0] = p2p.Protocol{
+		Name:    "eth",
+		Version: eth.ETH66,
+		Length:  17,
+		Run: func(p *p2p.Peer, rw p2p.MsgReadWriter) error {
+			fmt.Println("protocol run", p, rw)
+			return nil
+		},
+	}
+
+	//(*ethHandler)(s.handler), s.networkID, s.ethDialCandidates)
+	config.Protocols = protocols
+
 	server := p2p.Server{Config: config}
+
+	/*fmt.Println(server.Protocols)
+	os.Exit(0)*/
 
 	testNodeKey, _ := crypto.GenerateKey()
 	server.PrivateKey = testNodeKey
@@ -45,6 +71,9 @@ func main() {
 
 	for i := 0; i < 100; i++ {
 		time.Sleep(1000 * time.Millisecond)
+		/*for _, p := range server.Peers() {
+			fmt.Println("Node", p.Node())
+		}*/
 	}
 
 	/*
