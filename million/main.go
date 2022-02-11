@@ -51,7 +51,31 @@ func main() {
 		Version: eth.ETH66,
 		Length:  17,
 		Run: func(p *p2p.Peer, rw p2p.MsgReadWriter) error {
-			fmt.Println("protocol run", p, rw)
+			fmt.Println("protocol run", p, "rw", rw)
+			for {
+				msg, err := rw.ReadMsg()
+				if err != nil {
+					break
+				}
+				if msg.Code == eth.StatusMsg {
+					status := eth.StatusPacket{}
+					if err := msg.Decode(&status); err != nil {
+						return fmt.Errorf("status didn't decode")
+					}
+					fmt.Println(status)
+					// TODO: send back not a mirror
+					p2p.Send(rw, eth.StatusMsg, &eth.StatusPacket{
+						ProtocolVersion: status.ProtocolVersion,
+						NetworkID:       status.NetworkID,
+						TD:              status.TD,
+						Head:            status.Head,
+						Genesis:         status.Genesis,
+						ForkID:          status.ForkID,
+					})
+				} else {
+					//fmt.Println("other message", msg.Code, msg)
+				}
+			}
 			return nil
 		},
 	}
