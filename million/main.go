@@ -13,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/params"
 )
 
 func check(err error) {
@@ -22,13 +21,17 @@ func check(err error) {
 	}
 }
 
+var LocalNodes = []string{
+	"enode://db4a8481eefdda5d1e37fbf8665792724b9377474f8a6629ce2d839a55f1b495d4d11731fbe10f44fd72cbe8e9b5d380fd397c5b0715c03833053d19f30fcbfc@192.168.1.213:30303",
+}
+
 func main() {
 	fmt.Println("hello geth")
 
 	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.TerminalFormat(true)))
 	//glogger.Verbosity(log.LvlInfo)
-	glogger.Verbosity(log.LvlDebug)
-	//glogger.Verbosity(log.LvlTrace)
+	//glogger.Verbosity(log.LvlDebug)
+	glogger.Verbosity(log.LvlTrace)
 	log.Root().SetHandler(glogger)
 
 	// build up connections to peers
@@ -37,9 +40,20 @@ func main() {
 		MaxPeers:   50,
 		//NAT:        nat.Any(),
 	}
-	urls := params.MainnetBootnodes
+	//urls := params.MainnetBootnodes
+	//urls := LocalNodes
 	//fmt.Println(urls)
-	config.BootstrapNodes = make([]*enode.Node, 0, len(urls))
+
+	/*config.BootstrapNodes = make([]*enode.Node, len(params.MainnetBootnodes))
+	for i, url := range params.MainnetBootnodes {
+		config.BootstrapNodes[i], _ = enode.Parse(enode.ValidSchemes, url)
+	}*/
+
+	config.StaticNodes = make([]*enode.Node, len(LocalNodes))
+	for i, url := range LocalNodes {
+		config.StaticNodes[i], _ = enode.Parse(enode.ValidSchemes, url)
+	}
+
 	config.Name = common.MakeName("Geth", "v1.10.15")
 
 	/*protos := eth.MakeProtocols(nil, 0, nil)
@@ -72,8 +86,26 @@ func main() {
 						Genesis:         status.Genesis,
 						ForkID:          status.ForkID,
 					})
+
+					p2p.Send(rw, eth.GetBlockHeadersMsg, &eth.GetBlockHeadersPacket66{
+						RequestId: 0,
+						GetBlockHeadersPacket: &eth.GetBlockHeadersPacket{
+							Origin:  eth.HashOrNumber{Number: 0},
+							Amount:  16,
+							Skip:    0,
+							Reverse: false,
+						},
+					})
 				} else if msg.Code == eth.BlockHeadersMsg {
 					fmt.Println("got block headers!")
+					bh := eth.BlockHeadersPacket66{}
+					if err := msg.Decode(&bh); err != nil {
+						return fmt.Errorf("status didn't decode")
+					}
+					fmt.Println(bh)
+					for i, b := range bh.BlockHeadersPacket {
+						fmt.Println(i, b.Hash())
+					}
 				} else {
 					// i see TransactionsMsg, GetBlockHeadersMsg, NewPooledTransactionHashesMsg
 					//fmt.Println("other message", msg.Code, msg)
