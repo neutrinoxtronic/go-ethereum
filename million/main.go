@@ -13,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/p2p/nat"
 	"github.com/ethereum/go-ethereum/params"
 )
 
@@ -36,7 +35,7 @@ func main() {
 	config := p2p.Config{
 		ListenAddr: ":30303",
 		MaxPeers:   50,
-		NAT:        nat.Any(),
+		//NAT:        nat.Any(),
 	}
 	urls := params.MainnetBootnodes
 	//fmt.Println(urls)
@@ -63,6 +62,7 @@ func main() {
 						return fmt.Errorf("status didn't decode")
 					}
 					fmt.Println(status)
+					// TODO: confirm networkid is correct
 					// TODO: send back not a mirror
 					p2p.Send(rw, eth.StatusMsg, &eth.StatusPacket{
 						ProtocolVersion: status.ProtocolVersion,
@@ -72,7 +72,10 @@ func main() {
 						Genesis:         status.Genesis,
 						ForkID:          status.ForkID,
 					})
+				} else if msg.Code == eth.BlockHeadersMsg {
+					fmt.Println("got block headers!")
 				} else {
+					// i see TransactionsMsg, GetBlockHeadersMsg, NewPooledTransactionHashesMsg
 					//fmt.Println("other message", msg.Code, msg)
 				}
 			}
